@@ -313,6 +313,106 @@ Zendesk users are linked to Storeganise customers using region-specific external
 
 ---
 
+## 🧾 Checkout Flow (Unit Booking)
+
+### Checkout Page
+
+**Page URL Pattern**
+
+```
+http://storhub-sg.localhost:3003/en/storage-facilities/{building-slug}/checkout/{unit_id}
+```
+
+**Example**
+
+```
+http://storhub-sg.localhost:3003/en/storage-facilities/storhub-serangoon/checkout/64dcff4f66446b00140b26b2
+```
+
+* The last segment of the URL (`64dcff4f66446b00140b26b2`) represents the **Storeganise `unit_id`**.
+* This page is accessed when a user clicks **"Book Now"** on a unit type listing.
+
+---
+
+### Initial Data Fetch
+
+On page load, the checkout page performs the following Storeganise API calls:
+
+#### Fetch Unit Types
+
+**API**
+
+```
+GET admin/unit-types?siteId={siteId}&limit=1000
+```
+
+* `siteId` is derived from the selected building (`building.site_id`)
+* Used to validate and hydrate unit-related data during checkout
+
+---
+
+### Existing Order Handling (Jobs API)
+
+If an `orderId` exists in the session or URL, the checkout flow validates the current job state.
+
+#### Fetch Job Details
+
+**API**
+
+```
+GET admin/jobs/{orderId}
+```
+
+#### Validation Logic
+
+```ts
+if (orderId && job?.step !== 'await_confirmOrder') {
+  console.log(
+    `Job step for JOB_ID: ${orderId} is not await_confirmOrder redirecting to /storage-facilities/${slug}`,
+  )
+  redirect('/storage-facilities/')
+}
+```
+
+* If the job is **not** in `await_confirmOrder` state, the user is redirected back to the facilities listing
+* This prevents users from resuming invalid or completed checkout sessions
+
+---
+
+### Checkout Steps
+
+The checkout process is driven by a step-based state machine:
+
+```ts
+const CHECKOUT_STEPS = {
+  SKELETON: 0,
+  SIGNUPFORM: 1,
+  SELECT_MOVE_IN_DATE: 2,
+  SELECT_PREPAY_PERIOD: 3,
+  CHECKOUT_PROFILE: 4,
+  RENTAL_AGREEMENT_DETAILS: 5,
+  BOOKING_PREVIEW: 6, // SG only
+  PAYMENT_METHOD: 7, // MY only
+  PAYMENT: 8,
+  BOOKING_CONFIRMATION: 9,
+  SUCCESS: 10,
+  ERROR: 11,
+}
+```
+
+---
+
+### Initial Checkout State
+
+* On initial page load, the checkout starts with:
+
+  * **`SKELETON (0)`** – loading state while APIs resolve
+* After data is loaded, the flow proceeds to:
+
+  * **`SELECT_MOVE_IN_DATE (2)`** – first interactive step for the user
+
+---
+
 ## ✅ Summary
 
 * Unit types are fetched via a **Payload CMS proxy** to Storeganise
