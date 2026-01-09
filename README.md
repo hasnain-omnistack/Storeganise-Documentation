@@ -129,9 +129,196 @@ https://storhub-sg-test.storeganise.com/api/v1/admin/unit-types
 
 ---
 
+## 🔐 Authentication & Account Management
+
+### Login Page
+
+**Page URL**
+
+```
+http://storhub-sg.localhost:3003/en/account/login
+```
+
+#### Payload API
+
+**Endpoint**
+
+```
+POST /api/booking/auth/login
+```
+
+**Full URL**
+
+```
+http://storhub-sg.localhost:3003/api/booking/auth/login
+```
+
+**Payload Example**
+
+```json
+{
+  "email": "hasnain@omnistack.com",
+  "password": "10101010",
+  "autologin": false
+}
+```
+
+This API authenticates the user and proxies the request to the Storeganise authentication service.
+
+---
+
+#### Storeganise API
+
+**Endpoint**
+
+```
+POST /v1/auth/token?include=customFields,billingTrigger
+```
+
+**Headers**
+
+```
+Authorization: Basic base64(email:password)
+```
+
+Storeganise returns an authentication token along with related customer metadata.
+
+📘 **Official Documentation**
+[https://storhub-sg-test.storeganise.com/api/docs/user/auth](https://storhub-sg-test.storeganise.com/api/docs/user/auth)
+
+---
+
+### Signup Page
+
+**Page URL**
+
+```
+http://storhub-sg.localhost:3003/en/account/signup
+```
+
+#### Payload API
+
+**Endpoint**
+
+```
+POST /api/booking/auth/signup
+```
+
+**Payload Structure**
+
+```ts
+{
+  language: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  password: string
+  companyName?: string
+  customFields: {
+    customer_type: 'Individual' | 'Corporate'
+    business_phone_number?: string
+  }
+}
+```
+
+This API creates a user account and forwards the request to Storeganise.
+
+---
+
+#### Storeganise API
+
+**Endpoint**
+
+```
+POST /v1/users?include=customFields,billingTrigger
+```
+
+**Payload**
+
+The payload structure is the same as the Payload signup API and includes customer details and custom fields.
+
+📘 **Official Documentation**
+[https://storhub-sg-test.storeganise.com/api/docs/user/users](https://storhub-sg-test.storeganise.com/api/docs/user/users)
+
+---
+
+## 🎧 Zendesk User Creation (Post-Signup)
+
+After a successful signup, a Zendesk user is automatically created.
+
+### Payload API
+
+**Endpoint**
+
+```
+POST /api/booking/zendesk/user
+```
+
+**Payload**
+
+```ts
+{
+  userId
+  firstName
+  lastName
+  companyName
+  userType
+  email
+  phone
+  marketingConsent
+}
+```
+
+---
+
+### Zendesk API
+
+**Endpoint**
+
+```
+POST https://storhub.zendesk.com/api/v2/users
+```
+
+**Headers**
+
+```
+Authorization: Basic ${process.env.ZENDESK_API_TOKEN}
+```
+
+**Payload Example**
+
+```js
+{
+  name,
+  email,
+  phone,
+  skip_verify_email: true,
+  user_fields: {
+    'marketing_consent__shsg_': marketingConsent
+      ? 'marketingconsent_shsg_yes'
+      : 'marketingconsent_shsg_no',
+
+    ...(IS_MALAYSIA && {
+      external_id__shmy_: userId,
+    }),
+    ...(IS_SINGAPORE && {
+      external_id__shsg_: userId,
+    }),
+  },
+}
+```
+
+Zendesk users are linked to Storeganise customers using region-specific external IDs.
+
+---
+
 ## ✅ Summary
 
-* Frontend loads building data using a **slug**
-* Unit types are fetched via a **Payload CMS proxy API**
-* Payload forwards the request to the **Storeganise Admin API**
-* Storeganise returns unit type data for rendering
+* Unit types are fetched via a **Payload CMS proxy** to Storeganise
+* Login and signup are handled through **Payload authentication APIs**
+* Storeganise manages authentication tokens and user records
+* Zendesk users are automatically created after signup
+* Payload acts as a centralized integration layer for external services
+
+---
