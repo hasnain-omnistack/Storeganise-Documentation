@@ -413,6 +413,149 @@ const CHECKOUT_STEPS = {
 
 ---
 
+### Move-In Date Step (SELECT_MOVE_IN_DATE)
+
+During the **Move-In Date** step, multiple backend operations are triggered to validate booking limits, create orders, and generate sales leads.
+
+---
+
+#### Check Existing Rentals for Customer
+
+This API checks how many active or pending rentals exist for the same customer and determines whether further bookings are allowed.
+
+**API**
+
+```
+GET /api/booking/units/rentals/check/{ownerId}?currentOrder={orderId}
+```
+
+**Example**
+
+```
+http://storhub-sg.localhost:3003/api/booking/units/rentals/check/68b7c79baa8a980bab1f3276?currentOrder=6964dd8f52e45047a014dac7
+```
+
+**Response Example**
+
+```json
+{
+  "success": true,
+  "data": {
+    "ids": [
+      "6964dd8f52e45047a014dac7",
+      "68c4683c34f4cf18cc14a542",
+      "68c2c4fea3050117bbe00118"
+    ],
+    "isExceedReservationLimit": false,
+    "isAllowInputPromoCode": false,
+    "disallowNewUnitsBooking": false
+  }
+}
+```
+
+**Purpose**
+
+* Prevents exceeding reservation limits
+* Controls promo code eligibility
+* Determines if new unit bookings are allowed
+
+---
+
+#### Create Order (Draft)
+
+Once a move-in date is selected, a **draft order** is created in Storeganise.
+
+**API**
+
+```
+POST /api/booking/units/orders
+```
+
+**Payload Example**
+
+```json
+{
+  "siteId": "64ae05b48d0b730014125874",
+  "unitTypeId": "64dcff5166446b00140b26bc",
+  "startDate": "2026-01-12",
+  "prepayPeriods": 1,
+  "products": {
+    "64ee072db51bc200144e7b08": 1
+  },
+  "submitLater": true,
+  "ownerId": "68b7c79baa8a980bab1f3276",
+  "billingMethod": "invoice"
+}
+```
+
+* `submitLater: true` ensures the order remains incomplete until checkout is finalized
+
+---
+
+#### Fetch Unit Rental Details
+
+After order creation, rental details are fetched from Storeganise using the generated rental ID.
+
+**API**
+
+```
+GET /api/booking/stg/admin/unit-rentals/{unitRentalId}?include=customFields
+```
+
+**Example**
+
+```
+http://storhub-sg.localhost:3003/api/booking/stg/admin/unit-rentals/6964dd8f52e45047a014db46?include=customFields
+```
+
+---
+
+#### Create Zendesk Booking Lead
+
+At the same step, a booking lead is created in Zendesk for sales and follow-up purposes.
+
+**Payload API**
+
+```
+POST /api/booking/zendesk/lead
+```
+
+**Payload Example**
+
+```json
+{
+  "firstName": "Hasnain",
+  "lastName": "Shafqat",
+  "companyName": null,
+  "userType": "Individual",
+  "email": "hasnain@omnistack.com",
+  "phone": "+92989898988",
+  "siteDetails": {
+    "name": "Serangoon",
+    "id": "64ae05b48d0b730014125874"
+  },
+  "unitType": {
+    "title": { "en": "X Small 22 sq ft" },
+    "code": "xs-ccup-22_00",
+    "price": 359.77,
+    "id": "64dcff4f66446b00140b26b2"
+  },
+  "leadType": "booking_lead",
+  "flowType": "booking",
+  "promotion": { "code": "" },
+  "orderId": "6964dd8f52e45047a014dac7",
+  "unitRentalId": "6964dd8f52e45047a014db46"
+}
+```
+
+**Purpose**
+
+* Captures booking intent
+* Links Storeganise order and rental to Zendesk
+* Enables sales and support follow-ups
+
+---
+
 ## ✅ Summary
 
 * Unit types are fetched via a **Payload CMS proxy** to Storeganise
