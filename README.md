@@ -556,6 +556,207 @@ POST /api/booking/zendesk/lead
 
 ---
 
+### Your Details Step (CHECKOUT_PROFILE)
+
+After the **Move-In Date** step, the checkout proceeds to **Your Details**, where the user provides personal and address information.
+
+---
+
+#### Save User Details
+
+**Payload API**
+
+```
+PUT /api/booking/user
+```
+
+**Example URL**
+
+```
+http://storhub-sg.localhost:3003/api/booking/user
+```
+
+**Payload Example**
+
+```json
+{
+  "address": "10 Chia Ping Road Singapore 619978",
+  "phone": "+92989898988",
+  "customFields": {
+    "postal_code": "23244",
+    "altcontact_address": "",
+    "altcontact_firstname": "",
+    "altcontact_lastname": "",
+    "altcontact_name": " ",
+    "identity_document": null,
+    "identity_document_2": null,
+    "identity_document_3": null,
+    "identity_document_4": null,
+    "identity_document_5": null,
+    "id_no": "000000",
+    "apartment_number": "test"
+  }
+}
+```
+
+This API persists the user profile and forwards the update to Storeganise.
+
+---
+
+#### Storeganise API
+
+**Endpoint**
+
+```
+PUT /api/v1/user?include=customFields,billingTrigger
+```
+
+📘 **Official Documentation**
+[https://storhub-sg-test.storeganise.com/api/docs/user/users](https://storhub-sg-test.storeganise.com/api/docs/user/users)
+
+---
+
+### Rental Agreement Step (RENTAL_AGREEMENT_DETAILS)
+
+In this step, payment preferences are saved and the rental agreement is generated for user review.
+
+---
+
+#### Update Payment Account Configuration
+
+This API updates user payment configuration, including **autopay consent**.
+
+**Payload API**
+
+```
+PUT /api/booking/payment/finverse/user?userId={userId}
+```
+
+**Example URL**
+
+```
+http://storhub-sg.localhost:3003/api/booking/payment/finverse/user?userId=01K470TY50QZM05PQDTSBK0A8P
+```
+
+---
+
+#### Fetch Rental Agreement (HTML)
+
+The agreement is retrieved in **HTML format** and rendered on the checkout page.
+
+**Payload API**
+
+```
+POST /api/booking/units/orders/agreement
+```
+
+**Payload Example**
+
+```json
+{
+  "orderId": "69676f8e08c6eb69aeb9827e",
+  "startDate": "2026-01-14",
+  "endDate": "2026-02-14",
+  "siteId": "64ae05b48d0b730014125874",
+  "unitTypeId": "64dcff4f66446b00140b26b2",
+  "rentalId": "69676f8e08c6eb69aeb982fd",
+  "agreementType": "html"
+}
+```
+
+---
+
+#### Save Agreement Details
+
+When the user accepts the agreement and clicks **Continue**, agreement details are saved.
+
+**Payload API**
+
+```
+PUT /api/booking/units/orders?orderId={orderId}
+```
+
+**Payload Example**
+
+```json
+{
+  "billingMethod": "invoice",
+  "ownerId": "68b7c79baa8a980bab1f3276",
+  "signatureUrl": "data:image/png;base64,..."
+}
+```
+
+After this step, the **final checkout page** is shown with a **Make Payment** button.
+
+---
+
+### Payment Step (PAYMENT)
+
+When the user clicks **Make Payment**, a payment link is created and the user is redirected to the payment gateway.
+
+---
+
+#### Create Payment Link
+
+**Payload API**
+
+```
+POST /api/booking/payment/finverse
+```
+
+**Payload Example**
+
+```json
+{
+  "label": "Serangoon",
+  "description": "X Small 22 sq ft",
+  "price": 433.57,
+  "uen": "202007733R",
+  "metadata": {
+    "siteCode": "sg014",
+    "unitTypeCode": "xs-ccup-22_00",
+    "unitTypeId": "64dcff4f66446b00140b26b2",
+    "orderId": "69676f8e08c6eb69aeb9827e",
+    "unitRentalId": "69676f8e08c6eb69aeb982fd"
+  },
+  "redirectUrl": "http://storhub-sg.localhost:3003/finverse/checkout-redirection"
+}
+```
+
+The user is redirected to the external payment page.
+
+---
+
+### Payment Confirmation
+
+After successful payment, the user is redirected back to the order details page with a payment reference.
+
+**Redirect Example**
+
+```
+?payment_link_id=01KEY37WKQSX6Q7TNB61Y88ZRT
+```
+
+---
+
+#### Verify Payment Status
+
+**Payload API**
+
+```
+GET /api/booking/payment/finverse/status?payment_link_id={payment_link_id}
+```
+
+**Example URL**
+
+```
+http://storhub-sg.localhost:3003/api/booking/payment/finverse/status?payment_link_id=01KEY37WKQSX6Q7TNB61Y88ZRT
+```
+
+This API verifies the final payment status and updates the order accordingly.
+
+---
+
 ## ✅ Summary
 
 * Unit types are fetched via a **Payload CMS proxy** to Storeganise
